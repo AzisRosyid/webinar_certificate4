@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webinar Certificate Creator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-800 text-white">
+    <!-- Top bar with Download and Share buttons -->
+    <header class="bg-gray-900 p-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold">Certificate Creator</h1>
+        <div class="space-x-4">
+            <button id="download-button" class="bg-blue-500 hover:bg-blue-700 px-4 py-2 rounded">Download</button>
+            <button id="share-button" class="bg-green-500 hover:bg-green-700 px-4 py-2 rounded">Share</button>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <div class="flex h-screen">
+        <!-- Sidebar for Template and Name Input -->
+        <div id="sidebar" class="w-1/4 bg-gray-900 p-4">
+            <h2 class="text-xl font-semibold mb-4">Select Template</h2>
+            <div class="grid grid-cols-2 gap-4">
+                {% for template in templates %}
+                <button onclick="selectTemplate('{{ loop.index0 }}')" class="rounded overflow-hidden">
+                    <img src="{{ url_for('static', filename='templates/' + template) }}" alt="Template Image"
+                        class="w-full h-24 object-cover hover:opacity-75 transition-opacity duration-200 rounded-md">
+                </button>
+                {% endfor %}
+            </div>
+
+
+            <div class="mt-4">
+                <h2 class="text-xl font-semibold mb-4">Input Name</h2>
+                <input type="text" id="name-input" placeholder="Enter name"
+                    class="w-full px-4 py-2 text-black rounded mb-4">
+
+                <h2 class="text-xl font-semibold mb-4">Upload CSV File</h2>
+                <form id="upload-form" enctype="multipart/form-data">
+                    <input type="file" id="csv-file" name="file" class="w-full px-4 py-2 text-white rounded">
+                    <button type="submit"
+                        class="w-full bg-blue-500 hover:bg-blue-700 text-white mt-4 py-2 rounded">Upload
+                        and
+                        Generate Certificates</button>
+                </form>
+
+                <!-- Workspace for Preview -->
+                <div id="workspace" class="flex-1 bg-gray-100 p-4 text-black">
+                    <p>Upload a CSV file with "name" and "email" columns to generate certificates.</p>
+                </div>
+
+
+                <h2 class="text-xl font-semibold mt-4">Font Options</h2>
+                <label>Font Family:</label>
+                <select id="font-family" class="w-full px-2 py-1 text-black">
+                    <option value="Arial">Arial</option>
+                    <option value="Courier">Courier</option>
+                    <!-- Add more font families as needed -->
+                </select>
+
+                <label>Font Size:</label>
+                <input type="number" id="font-size" min="8" max="72" value="24" class="w-full px-4 py-2 text-black">
+
+                <label>Font Color:</label>
+                <input type="color" id="font-color" value="#000000" class="w-full px-4 py-2">
+            </div>
+        </div>
+
+        <!-- Workspace for Preview -->
+        <div id="workspace" class="flex-1 bg-gray-100 p-4">
+            <canvas id="certificate-canvas" class="w-full h-auto"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let selectedTemplate = '';
+        const canvas = document.getElementById('certificate-canvas');
+        const ctx = canvas.getContext('2d');
+        const templatePreview = new Image();
+
+        const templateProfiles = {{ template_profiles | tojson }};
+
+        function selectTemplate(templateIndex) {
+            selectedTemplate = templateIndex;
+            templatePreview.src = `/template/${templateIndex}`;
+
+            templatePreview.onload = function () {
+                updatePreview();
+            };
+        }
+
+        function loadTemplate() {
+            document.getElementById('font-size').value = templateProfiles[0]['font_size'];
+            document.getElementById('font-family').value = templateProfiles[0]['font_family'];
+            document.getElementById('font-color').value = templateProfiles[0]['font_color'];
+            selectTemplate(0);
+        }
+
+        loadTemplate();
+
+        // Function to update the certificate preview
+        function updatePreview() {
+            const profile = templateProfiles[selectedTemplate];
+
+            const name = document.getElementById('name-input').value;
+            const fontFamily = document.getElementById('font-family').value;
+            const fontSize = document.getElementById('font-size').value;
+            const fontColor = document.getElementById('font-color').value;
+
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Set the canvas size to match the template
+            canvas.width = templatePreview.width;
+            canvas.height = templatePreview.height;
+
+            // Draw the template image
+            ctx.drawImage(templatePreview, 0, 0);
+
+            // Calculate x and y positions based on canvas size and profile percentages
+            const x = (profile.x_percent / 100) * canvas.width;
+            const y = (profile.y_percent / 100) * canvas.height;
+
+            // Set the font properties
+            ctx.font = `${fontSize}px ${fontFamily}`;
+            ctx.fillStyle = fontColor;
+            ctx.textAlign = 'center';
+
+            // Draw the name text on the canvas
+            ctx.fillText(name, x, y);
+        }
+
+        // Event listener to update the preview as the user types
+        document.getElementById('name-input').addEventListener('input', updatePreview);
+        document.getElementById('font-family').addEventListener('change', updatePreview);
+        document.getElementById('font-size').addEventListener('input', updatePreview);
+        document.getElementById('font-color').addEventListener('input', updatePreview);
+
+        // Event listener to update preview on window resize for responsiveness
+        window.addEventListener('resize', updatePreview);
+
+        document.getElementById('download-button').addEventListener('click', function () {
+            const link = document.createElement('a');
+            link.download = 'certificate.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        document.getElementById('upload-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            formData.append('templateIndex', selectedTemplate);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'certificates.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error generating certificates.');
+                });
+        });
+
+    </script>
+</body>
+
+</html>

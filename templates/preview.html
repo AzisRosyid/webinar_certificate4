@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greeting Card Designer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        #sidebar {
+            width: 250px;
+            background-color: #2d3748;
+            color: #cbd5e0;
+            padding: 20px;
+            height: 100vh;
+        }
+
+        #workspace {
+            flex: 1;
+            background-color: #edf2f7;
+            padding: 20px;
+            position: relative;
+        }
+
+        #top-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background-color: #2d3748;
+            color: #cbd5e0;
+        }
+
+        .draggable {
+            position: absolute;
+            cursor: move;
+            font-size: 20px;
+            color: #2d3748;
+        }
+
+        #text-editor {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #2d3748;
+            color: #cbd5e0;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        #text-editor select,
+        #text-editor input[type="color"],
+        #text-editor input[type="number"] {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+
+<body class="flex bg-gray-800 text-white">
+
+    <!-- Sidebar for Design Elements -->
+    <div id="sidebar">
+        <h2 class="text-xl font-semibold mb-4">Design Blocks</h2>
+        <div class="space-y-4">
+            <button onclick="addTextElement('Header & Text')"
+                class="w-full bg-gray-600 hover:bg-gray-500 text-left px-4 py-2 rounded">Header & Text</button>
+            <!-- Other buttons -->
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex flex-col w-full">
+
+        <!-- Top Bar -->
+        <div id="top-bar">
+            <h1 class="text-lg font-semibold">Webinar Certificate Creator</h1>
+            <div class="space-x-2">
+                <button onclick="downloadCard()"
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded">Download</button>
+                <button onclick="shareCard()"
+                    class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-4 rounded">Share</button>
+            </div>
+        </div>
+
+        <!-- Workspace -->
+        <div id="workspace" class="relative">
+            <img id="preview-image" src="{{ url_for('static', filename='templates/' + default_template) }}"
+                alt="Template Image" class="w-full h-full object-contain rounded-lg">
+        </div>
+    </div>
+
+    <!-- Text Editor Toolbar -->
+    <div id="text-editor">
+        <label>Font:
+            <select id="font-family" onchange="updateTextStyle('fontFamily', this.value)">
+                <option value="Arial">Arial</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Verdana">Verdana</option>
+            </select>
+        </label>
+        <label>Color:
+            <input type="color" id="font-color" onchange="updateTextStyle('color', this.value)">
+        </label>
+        <label>Size:
+            <input type="number" id="font-size" min="8" max="72" value="20"
+                onchange="updateTextStyle('fontSize', this.value + 'px')">
+        </label>
+        <label>Alignment:
+            <select id="text-align" onchange="updateTextStyle('textAlign', this.value)">
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+            </select>
+        </label>
+    </div>
+
+    <script>
+        let selectedElement = null;
+
+        function addTextElement(type) {
+            const textElement = document.createElement('div');
+            textElement.className = 'draggable';
+            textElement.contentEditable = true;
+            textElement.style.left = '20px';
+            textElement.style.top = '20px';
+            textElement.innerText = type;
+            textElement.onclick = function () {
+                selectedElement = textElement;
+                showTextEditor();
+            };
+            document.getElementById('workspace').appendChild(textElement);
+            makeDraggable(textElement);
+        }
+
+        function makeDraggable(element) {
+            let offsetX = 0, offsetY = 0, mouseX = 0, mouseY = 0;
+            element.onmousedown = function (event) {
+                event.preventDefault();
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+                document.onmousemove = function (event) {
+                    event.preventDefault();
+                    offsetX = mouseX - event.clientX;
+                    offsetY = mouseY - event.clientY;
+                    mouseX = event.clientX;
+                    mouseY = event.clientY;
+                    element.style.left = (element.offsetLeft - offsetX) + "px";
+                    element.style.top = (element.offsetTop - offsetY) + "px";
+                };
+                document.onmouseup = function () {
+                    document.onmousemove = null;
+                    document.onmouseup = null;
+                };
+            };
+        }
+
+        function showTextEditor() {
+            document.getElementById('text-editor').style.display = 'block';
+            updateTextEditor();
+        }
+
+        function updateTextEditor() {
+            if (selectedElement) {
+                document.getElementById('font-family').value = selectedElement.style.fontFamily || 'Arial';
+                document.getElementById('font-color').value = selectedElement.style.color || '#000000';
+                document.getElementById('font-size').value = parseInt(selectedElement.style.fontSize) || 20;
+                document.getElementById('text-align').value = selectedElement.style.textAlign || 'left';
+            }
+        }
+
+        function updateTextStyle(style, value) {
+            if (selectedElement) {
+                selectedElement.style[style] = value;
+            }
+        }
+
+        function downloadCard() {
+            alert("Download feature is under development.");
+        }
+
+        function shareCard() {
+            alert("Share feature is under development.");
+        }
+    </script>
+</body>
+
+</html>
